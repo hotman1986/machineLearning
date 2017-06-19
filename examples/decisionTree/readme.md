@@ -1,1 +1,1 @@
-firstly, we need the csv file to implement this study, then transform it into figures by graphviz
+firstly, we need the csv file to implement this study, then transform it into figures by graphviz. After graphviz installation, the command should input like this:  dot -Tpdf filename.dot -o output.pdf
