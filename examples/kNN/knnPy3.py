@@ -54,7 +54,7 @@ def getResponse(neighbors):
             classVotes[response]+=1
         else:
             classVotes[response]=1
-    sortedVotes = sorted(classVotes.items(),key=operator.itemgetter(1),reverse=True)#reverse降序
+    sortedVotes = sorted(classVotes.items(),key=operator.itemgetter(1),reverse=True)#reverse降序 operator.itemgetter(1)是取第二个key值
     return sortedVotes[0][0]#投票最大的
             
 
@@ -86,4 +86,4 @@ def main():
 main()
 
     
- 
+    
