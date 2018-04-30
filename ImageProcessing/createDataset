@@ -142,3 +142,27 @@ plt.show()
 
 for label in unique_labels:
     print((labels.count(label)))
+from skimage import transform
+
+images28 = [transform.resize(image,(28,28)) for image in images]#resize image
+
+print(images28[0].shape)
+
+from skimage.color import rgb2gray
+
+images28 = np.array(images28)
+
+
+images28 = rgb2gray(images28)
+
+
+images28.shape
+
+import matplotlib.pyplot as plt
+
+for i in range(len(traffic_samples)):
+    plt.subplot(1,len(traffic_samples),i+1)
+    plt.axis('off')
+    plt.imshow(images28[traffic_samples[i]],cmap='gray')
+    plt.subplots_adjust(wspace=0.5)
+plt.show()
