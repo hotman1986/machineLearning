@@ -1,0 +1,256 @@
+# coding: utf-8
+
+# In[134]:
+
+
+import os
+import skimage
+from skimage import data
+import PIL
+from PIL import Image
+
+import os
+import skimage
+from skimage import data
+from skimage import transform
+import PIL
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+from random import randint
+from __future__ import division, print_function, absolute_import
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+# In[135]:
+
+
+def load_data(data_directory):
+    directories = [d for d in os.listdir(data_directory) 
+                   if os.path.isdir(os.path.join(data_directory, d))]
+    labels = []
+    images = []
+    for d in directories:
+        label_directory = os.path.join(data_directory, d)
+        file_names = [os.path.join(label_directory, f) 
+                      for f in os.listdir(label_directory) if f.endswith(".jpg")]
+        for f in file_names:
+            images.append(skimage.data.imread(f))
+            labels.append(str(d))
+    return images, labels
+
+
+# In[136]:
+
+
+ROOT_PATH = '/host/Can/targaMedium/'
+
+
+train_data_directory = os.path.join(ROOT_PATH, "outPut/train")
+test_data_directory = os.path.join(ROOT_PATH, "outPut/val")
+
+
+# In[137]:
+
+
+traffic_signs = []
+for i in range(0,5,1):
+    traffic_signs.append(randint(0,len(images)))#random choose 5 images in length images
+print(traffic_signs)
+
+
+# In[138]:
+
+
+for i in range(len(traffic_signs)):
+    plt.subplot(1,len(traffic_signs),i+1)
+    plt.axis('off')
+    plt.imshow(images[traffic_signs[i]])
+    plt.subplots_adjust(wspace=0.5)
+    plt.show()
+    
+    print('shape:{0},min:{1},max:{2}'.format(images[traffic_signs[i]].shape,#shape
+                                            images[traffic_signs[i]].min(),#min pixel
+                                            images[traffic_signs[i]].max()))#max pixel
+
+
+# In[139]:
+
+
+unique_labels = set(labels)#get the unique labels
+
+
+# In[140]:
+
+
+images28 = [transform.resize(image,(16,8)) for image in images]
+
+
+# In[141]:
+
+
+from skimage.color import rgb2gray
+
+images28 = np.array(images28)
+
+images28 = rgb2gray(images28)
+
+
+# In[142]:
+
+
+import matplotlib.pyplot as plt
+for i in range(len(traffic_signs)):
+    plt.subplot(1,len(traffic_signs),i+1)
+    plt.axis('off')
+    plt.imshow(images28[traffic_signs[i]],cmap='gray')
+    plt.subplots_adjust(wspace=0.5)
+plt.show()
+
+
+# In[143]:
+
+
+print(len(images28))
+
+
+# In[144]:
+
+
+####################################################################
+
+
+# In[151]:
+
+
+# Parameters
+learning_rate = 0.001
+batch_size = 100
+display_step = 1
+model_path = "/host/tmp/model.ckpt"
+
+# Network Parameters
+n_hidden_1 = 256 # 1st layer number of features
+n_hidden_2 = 256 # 2nd layer number of features
+n_input = 16*8 # MNIST data input (img shape: 28*28)
+n_classes = 36 # MNIST total classes (0-9 digits)
+
+# tf Graph input
+x = tf.placeholder(dtype = tf.float32, shape = [None,16, 8])
+y = tf.placeholder(dtype=tf.int32,shape= [None])
+
+
+
+# Create model
+def multilayer_perceptron(x, weights, biases):
+    # Hidden layer with RELU activation
+    layer_1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
+    layer_1 = tf.nn.relu(layer_1)
+    # Hidden layer with RELU activation
+    layer_2 = tf.add(tf.matmul(layer_1, weights['h2']), biases['b2'])
+    layer_2 = tf.nn.relu(layer_2)
+    # Output layer with linear activation
+    out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
+    return out_layer
+
+# Store layers weight & bias
+weights = {
+    'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1])),
+    'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2])),
+    'out': tf.Variable(tf.random_normal([n_hidden_2, n_classes]))
+}
+biases = {
+    'b1': tf.Variable(tf.random_normal([n_hidden_1])),
+    'b2': tf.Variable(tf.random_normal([n_hidden_2])),
+    'out': tf.Variable(tf.random_normal([n_classes]))
+}
+
+# Construct model
+pred = multilayer_perceptron(x, weights, biases)
+
+# Define loss and optimizer
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+
+# Initializing the variables
+init = tf.global_variables_initializer()
+
+
+# In[146]:
+
+
+# 'Saver' op to save and restore all the variables
+saver = tf.train.Saver()
+
+
+# In[147]:
+
+
+images29=[np.reshape(image,(16*8)) for image in images28]
+
+
+# In[148]:
+
+
+labels29 = [ord(label) for label in labels ]
+
+
+# In[149]:
+
+
+#print(labels29)
+
+
+# In[150]:
+
+
+# Running first session
+test_images, test_labels = load_data(test_data_directory)
+test_labels_string = [ord(test_label_string) for test_label_string in test_labels  ]
+test_images28 = [transform.resize(image, (16, 8)) for image in test_images]
+
+# Convert to grayscal
+from skimage.color import rgb2gray
+test_images28 = rgb2gray(np.array(test_images28))
+
+
+
+test_images29=[np.reshape(image,(16*8)) for image in test_images28]
+
+print("Starting 1st session...")
+
+with tf.Session() as sess:
+    # Initialize variables
+    sess.run(init)
+
+    # Training cycle
+    for epoch in range(3):
+        avg_cost = 0.
+        total_batch = int((len(images28)+len(labels))/batch_size)
+        # Loop over all batches
+        for i in range(total_batch):
+            
+            batch_x = images29
+            batch_y = labels29
+            # Run optimization op (backprop) and cost op (to get loss value)
+            _, c = sess.run([optimizer, cost], feed_dict={x: batch_x,
+                                                          y: batch_y})
+            # Compute average loss
+            avg_cost += c / total_batch
+        # Display logs per epoch step
+        if epoch % display_step == 0:
+            print ("Epoch: ", '%04d' % (epoch+1), "cost=",                 "{:.9f}".format(avg_cost))
+    print("First Optimization Finished!")
+
+    # Test model
+    correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+    # Calculate accuracy
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+    print("Accuracy:", accuracy.eval({x: test_images28, y: test_label_string}))
+
+    # Save model weights to disk
+    save_path = saver.save(sess, model_path)
+    print("Model saved in file: %s" % save_path)
