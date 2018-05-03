@@ -1,0 +1,311 @@
+# coding: utf-8
+
+# In[45]:
+
+
+import os
+import skimage
+from skimage import data
+import PIL
+from PIL import Image
+
+import os
+import skimage
+from skimage import data
+from skimage import transform
+import PIL
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+from random import randint
+
+
+# In[46]:
+
+
+def load_data(data_directory):
+    directories = [d for d in os.listdir(data_directory) 
+                   if os.path.isdir(os.path.join(data_directory, d))]
+    labels = []
+    images = []
+    for d in directories:
+        label_directory = os.path.join(data_directory, d)
+        file_names = [os.path.join(label_directory, f) 
+                      for f in os.listdir(label_directory) if f.endswith(".jpg")]
+        for f in file_names:
+            images.append(skimage.data.imread(f))
+            labels.append(str(d))
+    return images, labels
+
+
+# In[47]:
+
+
+ROOT_PATH = '/host/Can/targaMedium/'
+
+
+# In[48]:
+
+
+train_data_directory = os.path.join(ROOT_PATH, "outPut/train")
+test_data_directory = os.path.join(ROOT_PATH, "outPut/val")
+
+
+# In[49]:
+
+
+images, labels = load_data(train_data_directory)
+
+
+# In[50]:
+
+
+plt.hist(labels,36)
+print(len(images))
+
+
+# In[51]:
+
+
+type(images[0])
+
+
+# In[52]:
+
+
+images[0].shape
+
+
+# In[53]:
+
+
+traffic_signs = []
+for i in range(0,5,1):
+    traffic_signs.append(randint(0,len(images)))#random choose 5 images in length images
+print(traffic_signs)
+
+
+# In[54]:
+
+
+for i in range(len(traffic_signs)):
+    plt.subplot(1,len(traffic_signs),i+1)
+    plt.axis('off')
+    plt.imshow(images[traffic_signs[i]])
+    plt.subplots_adjust(wspace=0.5)
+    plt.show()
+    
+    print('shape:{0},min:{1},max:{2}'.format(images[traffic_signs[i]].shape,#shape
+                                            images[traffic_signs[i]].min(),#min pixel
+                                            images[traffic_signs[i]].max()))#max pixel
+
+
+# In[55]:
+
+
+unique_labels = set(labels)#get the unique labels
+
+
+
+# In[56]:
+
+
+plt.figure(figsize=(15,15))
+
+
+# In[57]:
+
+
+unique_labels
+
+
+# In[58]:
+
+
+i = 1
+
+# For each unique label,
+for label in unique_labels:
+    # You pick the first image for each label
+    image = images[labels.index(label)]
+    # Define 64 subplots 
+    plt.subplot(8, 8, i)
+    # Don't include axes
+    plt.axis('off')
+    # Add a title to each subplot 
+    #plt.title("Label {0} ({1})".format(label, labels.count(label)))
+    # Add 1 to the counter
+    i += 1
+    # And you plot this first image 
+    plt.imshow(image)
+
+
+# In[59]:
+
+
+images28 = [transform.resize(image,(16,8)) for image in images]
+
+
+# In[60]:
+
+
+from skimage.color import rgb2gray
+
+
+# In[61]:
+
+
+images28 = np.array(images28)
+
+
+# In[62]:
+
+
+images28 = rgb2gray(images28)
+
+
+# In[63]:
+
+
+import matplotlib.pyplot as plt
+for i in range(len(traffic_signs)):
+    plt.subplot(1,len(traffic_signs),i+1)
+    plt.axis('off')
+    plt.imshow(images28[traffic_signs[i]],cmap='gray')
+    plt.subplots_adjust(wspace=0.5)
+plt.show()
+
+
+# In[64]:
+
+
+labels = [ord(label) for label in labels]
+
+
+# In[65]:
+
+
+labels
+
+
+# In[66]:
+
+
+import tensorflow as tf 
+
+# Initialize placeholders 
+x = tf.placeholder(dtype = tf.float32, shape = [None, 16, 8])
+y = tf.placeholder(dtype = tf.int32, shape = [None])
+
+# Flatten the input data
+images_flat = tf.contrib.layers.flatten(x)
+
+# Fully connected layer 
+logits = tf.contrib.layers.fully_connected(images_flat, 100, tf.nn.relu)
+
+# Define a loss function
+loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels = y, 
+                                                                    logits = logits))
+# Define an optimizer 
+train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
+
+# Convert logits to label indexes
+correct_pred = tf.argmax(logits, 1)
+
+# Define an accuracy metric
+accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+
+# In[67]:
+
+
+print("images_flat: ", images_flat)
+print("logits: ", logits)
+print("loss: ", loss)
+print("predicted_labels: ", correct_pred)
+
+
+# In[68]:
+
+
+tf.set_random_seed(1234)
+sess = tf.Session()
+
+sess.run(tf.global_variables_initializer())
+
+for i in range(101):
+        print('EPOCH', i)
+        _, accuracy_val = sess.run([train_op, accuracy], feed_dict={x: images28, y: labels})
+        if i % 10 == 0:
+            print("Loss: ", loss)
+        print('DONE WITH EPOCH')
+
+
+# In[69]:
+
+
+import matplotlib.pyplot as plt
+import random
+
+# Pick 10 random images
+sample_indexes = random.sample(range(len(images28)), 10)
+sample_images = [images28[i] for i in sample_indexes]
+sample_labels = [labels[i] for i in sample_indexes]
+
+# Run the "correct_pred" operation
+predicted = sess.run([correct_pred], feed_dict={x: sample_images})[0]
+                        
+# Print the real and predicted labels
+print(sample_labels)
+print(predicted)
+
+# Display the predictions and the ground truth visually.
+fig = plt.figure(figsize=(10, 10))
+for i in range(len(sample_images)):
+    truth = sample_labels[i]
+    prediction = predicted[i]
+    plt.subplot(5, 2,1+i)
+    plt.axis('off')
+    color='green' if truth == prediction else 'red'
+    plt.text(40, 10, "Truth:{0}\nPrediction: {1}".format(truth, prediction), 
+             fontsize=12, color=color)
+    plt.imshow(sample_images[i],  cmap="gray")
+
+plt.show()
+
+
+# In[70]:
+
+
+from skimage import transform
+
+# Load the test data
+test_images, test_labels = load_data(test_data_directory)
+test_labels_string = [ord(test_label_string) for test_label_string in test_labels  ]
+
+
+# Transform the images to 28 by 28 pixels
+test_images28 = [transform.resize(image, (16, 8)) for image in test_images]
+
+# Convert to grayscal
+from skimage.color import rgb2gray
+test_images28 = rgb2gray(np.array(test_images28))
+
+# Run predictions against the full test set.
+predicted = sess.run([correct_pred], feed_dict={x: test_images28})[0]
+
+# Calculate correct matches 
+match_count = sum([int(y == y_) for y, y_ in zip(test_labels_string, predicted)])
+
+# Calculate the accuracy
+accuracy = match_count / len(test_labels)
+
+# Print the accuracy
+print("Accuracy: {:.3f}".format(accuracy))
+
+
+# In[71]:
+
+
+print(len(test_images))
