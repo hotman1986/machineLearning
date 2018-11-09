@@ -1,6 +1,0 @@
-This exp is for testing the size effect in dataset original is 16*8 size test and training.
-we pick 550 mnist images for training and 100 mnist images for testing.
-mnist_padding/pickForTrain is for picking up original mnist images
-mnist_padding/train is the image after padding
-We testing size 160*90,112*56,80*40,48*24,16*8.
-We also generate 16*16,84*84,140*140,196*196,280*280 mnist padding in directory full_mnist_padding
